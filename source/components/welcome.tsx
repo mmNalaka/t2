@@ -1,26 +1,26 @@
-import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
-import {Box, Text} from 'ink';
+// import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
+// import {Box, Text} from 'ink';
+import BigText from 'ink-big-text';
+import Gradient from 'ink-gradient';
 import {memo} from 'react';
 
 import {useTheme} from '../hooks/use-theme.js';
 import {useResponsiveTerminal} from '../hooks/use-terminal-width.js';
 
-import fs from 'fs';
-import path from 'path';
-import {fileURLToPath} from 'url';
-import BigText from 'ink-big-text';
-import Gradient from 'ink-gradient';
+// import fs from 'fs';
+// import path from 'path';
+// import {fileURLToPath} from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 // Read package.json once at module load time to avoid repeated file reads
-const packageJson = JSON.parse(
-	fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'),
-) as {version: string};
+// const packageJson = JSON.parse(
+// 	fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'),
+// ) as {version: string};
 
 export default memo(function Welcome() {
-	const {boxWidth, isNarrow, isNormal} = useResponsiveTerminal();
+	const {isNarrow} = useResponsiveTerminal();
 	const {colors} = useTheme();
 
 	return (
@@ -31,7 +31,7 @@ export default memo(function Welcome() {
 					<Gradient colors={[colors.primary, colors.tool]}>
 						<BigText text="T2" font="tiny" />
 					</Gradient>
-					<Box
+					{/* <Box
 						flexDirection="column"
 						marginBottom={1}
 						borderStyle="round"
@@ -49,7 +49,7 @@ export default memo(function Welcome() {
 						<Text color={colors.secondary}>• Use natural language</Text>
 						<Text color={colors.secondary}>• /help for commands</Text>
 						<Text color={colors.secondary}>• Ctrl+C to quit</Text>
-					</Box>
+					</Box> */}
 				</>
 			) : (
 				/* Normal/Wide terminal: full version with TitledBox */
@@ -58,7 +58,7 @@ export default memo(function Welcome() {
 						<BigText text="T2 (Terminal TODO)" font="tiny" />
 					</Gradient>
 
-					<TitledBox
+					{/* <TitledBox
 						key={colors.primary}
 							borderStyle="round"
 							titles={[`✻ Welcome to T2 (Terminal TODO) ${packageJson.version}`]}
@@ -92,7 +92,7 @@ export default memo(function Welcome() {
 							</Text>
 						</Box>
 						<Text color={colors.white}>/help for help</Text>
-					</TitledBox>
+					</TitledBox> */}
 				</>
 			)}
 		</>

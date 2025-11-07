@@ -12,7 +12,7 @@ export const themes: Record<ThemePreset, Theme> = {
 			success: '#7AF778',
 			error: '#f7768e',
 			secondary: '#565f89',
-			info: '#2ac3de',
+			info: '#7fbbb3',
 			warning: '#e0af68',
 			diffAdded: '#1e2f1e',
 			diffRemoved: '#2f1e1e',

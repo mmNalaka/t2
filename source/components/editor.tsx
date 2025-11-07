@@ -1,50 +1,119 @@
-import {Box, Text} from 'ink';
-import {memo} from 'react';
+import {Box, Text, useInput} from 'ink';
+import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
+import {memo, useState} from 'react';
+import SelectInput from 'ink-select-input';
+import MultiSelect from './multi-select.js';
 
 import {useTheme} from '../hooks/use-theme.js';
-import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
+
+const items = [
+	{
+		label: '2025-11-06-1',
+		value: '2025-11-06-1',
+	},
+	{
+		label: '2025-11-06-2',
+		value: '2025-11-06-2',
+	},
+	{
+		label: '2025-11-06-3',
+		value: '2025-11-06-3',
+	},
+];
+
+const todos = [
+	{
+		label: 'First',
+		value: 'first',
+	},
+	{
+		label: 'Second',
+		value: 'second',
+	},
+	{
+		label: 'Third',
+		value: 'third',
+	},
+];
 
 export default memo(function Editor() {
 	const {colors} = useTheme();
+	const [activePane, setActivePane] = useState<'notes' | 'preview' | 'todos'>('notes');
+	const [selectedNote, setSelectedNote] = useState<{
+		label: string;
+		value: string;
+	} | null>();
+
+	function handleSelect(item: {label: string; value: string}) {
+		setSelectedNote(item);
+	}
+
+	const handleSubmit = (_: any) => {
+	};
+
+	useInput((input) => {
+		if (input === '1') {
+			setActivePane('notes');
+			return;
+		}
+		if (input === '2') {
+			setActivePane('preview');
+			return;
+		}
+		if (input === '3') {
+			setActivePane('todos');
+			return;
+		}2
+	});
 
 	return (
 		<>
 			<Box>
 				<TitledBox
-					titles={[`Notes (0)`]}
-					titleStyles={titleStyles['pill']}
+					titles={[`1: Notes (0)`]}
+					titleStyles={titleStyles['rounded']}
 					width={32}
 					flexDirection="column"
 					borderStyle="round"
-					borderColor={colors.primary}
+					borderColor={activePane === 'notes' ? colors.primary : colors.secondary}
 					paddingX={1}
 				>
-					<Text>Notes </Text>
+					<SelectInput items={items} onSelect={handleSelect} isFocused={activePane === 'notes'} />
 				</TitledBox>
-				<Box
+				<TitledBox
+					titles={[`2: Preview ${selectedNote?.label ?? ''}`]}
+					titleStyles={titleStyles['rounded']}
 					flexGrow={1}
 					flexDirection="column"
 					borderStyle="round"
-					borderColor={colors.tool}
+					borderColor={activePane === 'preview' ? colors.primary : colors.secondary}
 					paddingX={1}
 					marginLeft={1}
 				>
-					<Text>Preview</Text>
-					<Text>asdasda</Text>
-				</Box>
+					<Text>{selectedNote?.label ?? ''}</Text>
+				</TitledBox>
 			</Box>
+			<TitledBox
+				titles={[`3: TODOs (0)`]}
+				titleStyles={titleStyles['rounded']}
+				flexGrow={1}
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={activePane === 'todos' ? colors.primary : colors.secondary}
+			>
+				<MultiSelect items={todos} onSubmit={handleSubmit} isFocused={activePane === 'todos'} />
+			</TitledBox>
 			<Box
 				flexGrow={1}
 				flexDirection="column"
 				borderStyle="round"
-				borderColor={colors.secondary}
+				borderColor={colors.info}
 				paddingX={1}
 			>
 				<Text>
 					q:quit i:init-git n:new-note e:edit /:search p:pin arrows:navigate
 					space:toggle-first-task
 				</Text>
-				<Text>asdasd</Text>
 			</Box>
 		</>
 	);
