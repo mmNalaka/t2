@@ -10,7 +10,7 @@ type Props = {
 
 const themeContextValue = {
 	currentTheme: 'tokyo-night' as ThemePreset,
-	colors: themes['tokyo-night'].colors,
+	colors: themes['synthwave-84'].colors,
 	setCurrentTheme: () => {},
 };
 

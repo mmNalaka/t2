@@ -5,6 +5,7 @@ import SelectInput from 'ink-select-input';
 import MultiSelect from './multi-select.js';
 
 import {useTheme} from '../hooks/use-theme.js';
+import {renderMarkdown} from '../lib/markdown.js';
 
 const items = [
 	{
@@ -36,9 +37,37 @@ const todos = [
 	},
 ];
 
+const markdownContent = `
+# Hello World
+Description of the note
+
+\`\`\`ts
+const x = 1;
+\`\`\`
+
+## Lists
+
+- First
+- Second
+- Third
+
+## Links
+
+- [Google](https://google.com)
+- [GitHub](https://github.com)
+
+## TODOs
+
+- [x] First
+- [ ] Second
+- [ ] Third
+`;
+
 export default memo(function Editor() {
 	const {colors} = useTheme();
-	const [activePane, setActivePane] = useState<'notes' | 'preview' | 'todos'>('notes');
+	const [activePane, setActivePane] = useState<'notes' | 'preview' | 'todos'>(
+		'notes',
+	);
 	const [selectedNote, setSelectedNote] = useState<{
 		label: string;
 		value: string;
@@ -48,10 +77,9 @@ export default memo(function Editor() {
 		setSelectedNote(item);
 	}
 
-	const handleSubmit = (_: any) => {
-	};
+	const handleSubmit = (_: any) => {};
 
-	useInput((input) => {
+	useInput(input => {
 		if (input === '1') {
 			setActivePane('notes');
 			return;
@@ -63,7 +91,8 @@ export default memo(function Editor() {
 		if (input === '3') {
 			setActivePane('todos');
 			return;
-		}2
+		}
+		2;
 	});
 
 	return (
@@ -75,10 +104,16 @@ export default memo(function Editor() {
 					width={32}
 					flexDirection="column"
 					borderStyle="round"
-					borderColor={activePane === 'notes' ? colors.primary : colors.secondary}
+					borderColor={
+						activePane === 'notes' ? colors.primary : colors.secondary
+					}
 					paddingX={1}
 				>
-					<SelectInput items={items} onSelect={handleSelect} isFocused={activePane === 'notes'} />
+					<SelectInput
+						items={items}
+						onSelect={handleSelect}
+						isFocused={activePane === 'notes'}
+					/>
 				</TitledBox>
 				<TitledBox
 					titles={[`2: Preview ${selectedNote?.label ?? ''}`]}
@@ -86,11 +121,13 @@ export default memo(function Editor() {
 					flexGrow={1}
 					flexDirection="column"
 					borderStyle="round"
-					borderColor={activePane === 'preview' ? colors.primary : colors.secondary}
+					borderColor={
+						activePane === 'preview' ? colors.primary : colors.secondary
+					}
 					paddingX={1}
 					marginLeft={1}
 				>
-					<Text>{selectedNote?.label ?? ''}</Text>
+					<Text>{renderMarkdown(markdownContent)}</Text>
 				</TitledBox>
 			</Box>
 			<TitledBox
@@ -101,7 +138,11 @@ export default memo(function Editor() {
 				borderStyle="round"
 				borderColor={activePane === 'todos' ? colors.primary : colors.secondary}
 			>
-				<MultiSelect items={todos} onSubmit={handleSubmit} isFocused={activePane === 'todos'} />
+				<MultiSelect
+					items={todos}
+					onSubmit={handleSubmit}
+					isFocused={activePane === 'todos'}
+				/>
 			</TitledBox>
 			<Box
 				flexGrow={1}
