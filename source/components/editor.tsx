@@ -3,6 +3,7 @@ import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
 import {memo, useState} from 'react';
 import SelectInput from 'ink-select-input';
 import MultiSelect from './multi-select.js';
+import TextInput from 'ink-text-input';
 
 import {useTheme} from '../hooks/use-theme.js';
 import {renderMarkdown} from '../lib/markdown.js';
@@ -72,6 +73,10 @@ export default memo(function Editor() {
 		label: string;
 		value: string;
 	} | null>();
+	const [isCreatingNote, setIsCreatingNote] = useState(false);
+	const [noteTitle, setNoteTitle] = useState(
+		new Date().toISOString().split('T')[0] || '',
+	);
 
 	function handleSelect(item: {label: string; value: string}) {
 		setSelectedNote(item);
@@ -79,7 +84,16 @@ export default memo(function Editor() {
 
 	const handleSubmit = (_: any) => {};
 
+	const handleCreateNoteSubmit = () => {
+		// TODO: implement note creation
+		setIsCreatingNote(false);
+		setNoteTitle(new Date().toISOString().split('T')[0] || '');
+	};
+
 	useInput(input => {
+		if (isCreatingNote) {
+			return; // Don't process other inputs while creating note
+		}
 		if (input === '1') {
 			setActivePane('notes');
 			return;
@@ -92,6 +106,10 @@ export default memo(function Editor() {
 			setActivePane('todos');
 			return;
 		}
+		if (input === 'n') {
+			setIsCreatingNote(true);
+			return;
+		}
 		2;
 	});
 
@@ -99,7 +117,7 @@ export default memo(function Editor() {
 		<>
 			<Box>
 				<TitledBox
-					titles={[`1: Notes (0)`]}
+					titles={[`1: 🗒️ Notes (0)`]}
 					titleStyles={titleStyles['rounded']}
 					width={32}
 					flexDirection="column"
@@ -116,7 +134,7 @@ export default memo(function Editor() {
 					/>
 				</TitledBox>
 				<TitledBox
-					titles={[`2: Preview ${selectedNote?.label ?? ''}`]}
+					titles={[`2: 👀 Preview ${selectedNote?.label ?? ''}`]}
 					titleStyles={titleStyles['rounded']}
 					flexGrow={1}
 					flexDirection="column"
@@ -131,7 +149,7 @@ export default memo(function Editor() {
 				</TitledBox>
 			</Box>
 			<TitledBox
-				titles={[`3: TODOs (0)`]}
+				titles={[`3: 📝 TODOs (0)`]}
 				titleStyles={titleStyles['rounded']}
 				flexGrow={1}
 				flexDirection="column"
@@ -152,10 +170,30 @@ export default memo(function Editor() {
 				paddingX={1}
 			>
 				<Text>
-					q:quit i:init-git n:new-note e:edit /:search p:pin arrows:navigate
+					{activePane === 'notes' && '1: '}
+					n:new-note e:edit /:search d:delete arrows:navigate
 					space:toggle-first-task
 				</Text>
 			</Box>
+			{isCreatingNote && (
+				<TitledBox
+					titles={[` 🆕 New Note`]}
+					titleStyles={titleStyles['rounded']}
+					borderStyle="round"
+					borderColor={colors.primary}
+					marginTop={1}
+				>
+					<TextInput
+						value={noteTitle}
+						onChange={setNoteTitle}
+						onSubmit={handleCreateNoteSubmit}
+						placeholder="Enter note title"
+					/>
+					<Text color="gray" dimColor>
+						Press Enter to create, Esc to cancel
+					</Text>
+				</TitledBox>
+			)}
 		</>
 	);
 });
