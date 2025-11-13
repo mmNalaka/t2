@@ -23,6 +23,7 @@ export default memo(function Editor() {
 	const [currentNoteContent, setCurrentNoteContent] = useState('');
 	const [isCreatingNote, setIsCreatingNote] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [noteTitle, setNoteTitle] = useState(
 		new Date().toISOString().split('T')[0] || '',
 	);
@@ -97,8 +98,10 @@ export default memo(function Editor() {
 			await deleteNote(noteToDelete.path, vaultPath);
 			await refreshNotes();
 			setMessage('Note deleted');
+			setShowDeleteConfirm(false);
 		} catch (error) {
 			setMessage(`Error deleting note: ${error}`);
+			setShowDeleteConfirm(false);
 		}
 	};
 	
@@ -111,6 +114,19 @@ export default memo(function Editor() {
 	useInput((input, key) => {
 		if (isCreatingNote || isEditing) {
 			return; // Don't process other inputs while creating note or editing
+		}
+		
+		// Handle delete confirmation
+		if (showDeleteConfirm) {
+			if (input === 'y' || input === 'Y') {
+				handleDeleteNote();
+				return;
+			}
+			if (input === 'n' || input === 'N' || key.escape) {
+				setShowDeleteConfirm(false);
+				return;
+			}
+			return;
 		}
 		
 		// Handle arrow key navigation in notes pane
@@ -142,7 +158,9 @@ export default memo(function Editor() {
 			return;
 		}
 		if (input === 'd') {
-			handleDeleteNote();
+			if (notes.length > 0) {
+				setShowDeleteConfirm(true);
+			}
 			return;
 		}
 		if (input === 'e') {
@@ -221,6 +239,23 @@ export default memo(function Editor() {
 				</Text>
 				{message && <Text color="yellow">{message}</Text>}
 			</Box>
+			{showDeleteConfirm && notes[selectedNoteIndex] && (
+				<TitledBox
+					titles={[` ⚠️  Confirm Delete`]}
+					titleStyles={titleStyles['rounded']}
+					borderStyle="round"
+					borderColor={colors.error || 'red'}
+					marginTop={1}
+					paddingX={1}
+				>
+					<Text>
+						Delete note: <Text bold>{notes[selectedNoteIndex].meta.title || notes[selectedNoteIndex].path.split('/').pop()}</Text>?
+					</Text>
+					<Text color="gray" dimColor>
+						Press Y to confirm, N or Esc to cancel
+					</Text>
+				</TitledBox>
+			)}
 			{isEditing && notes.length > 0 && notes[selectedNoteIndex] && (
 				<TerminalEditor
 					filePath={notes[selectedNoteIndex].path}
