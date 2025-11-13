@@ -108,10 +108,23 @@ export default memo(function Editor() {
 		setMessage('Note saved');
 	};
 
-	useInput(input => {
+	useInput((input, key) => {
 		if (isCreatingNote || isEditing) {
 			return; // Don't process other inputs while creating note or editing
 		}
+		
+		// Handle arrow key navigation in notes pane
+		if (activePane === 'notes' && notes.length > 0) {
+			if (key.upArrow) {
+				setSelectedNoteIndex(prev => Math.max(0, prev - 1));
+				return;
+			}
+			if (key.downArrow) {
+				setSelectedNoteIndex(prev => Math.min(notes.length - 1, prev + 1));
+				return;
+			}
+		}
+		
 		if (input === '1') {
 			setActivePane('notes');
 			return;
@@ -155,12 +168,14 @@ export default memo(function Editor() {
 					paddingX={1}
 				>
 					<SelectInput
+						key={selectedNoteIndex}
 						items={notes.map(note => ({
 							label: note.meta.title || note.path.split('/').pop() || 'Untitled',
 							value: note.path,
 						}))}
 						onSelect={handleSelect}
 						isFocused={activePane === 'notes'}
+						initialIndex={selectedNoteIndex}
 					/>
 				</TitledBox>
 				<TitledBox
