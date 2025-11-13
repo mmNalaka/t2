@@ -189,3 +189,63 @@ ${note.body}
 	
 	await updateNote(notePath, content, vaultPath);
 }
+
+/**
+ * Extracts TODO items from note content
+ * Matches: - [ ] Task, [ ] Task, * [ ] Task, etc.
+ */
+export function extractTodos(content: string): Array<{text: string; checked: boolean; index: number}> {
+	const lines = content.split('\n');
+	const todos: Array<{text: string; checked: boolean; index: number}> = [];
+	
+	lines.forEach((line, index) => {
+		// Match: optional whitespace, optional list marker (-, *, +), whitespace, checkbox, text
+		const uncheckedMatch = line.match(/^\s*[-*+]?\s*\[ \]\s*(.+)$/);
+		const checkedMatch = line.match(/^\s*[-*+]?\s*\[x\]\s*(.+)$/i);
+		
+		if (uncheckedMatch && uncheckedMatch[1]) {
+			todos.push({
+				text: uncheckedMatch[1].trim(),
+				checked: false,
+				index,
+			});
+		} else if (checkedMatch && checkedMatch[1]) {
+			todos.push({
+				text: checkedMatch[1].trim(),
+				checked: true,
+				index,
+			});
+		}
+	});
+	
+	return todos;
+}
+
+/**
+ * Toggles a TODO item at a specific line index
+ */
+export async function toggleTodo(notePath: string, lineIndex: number, vaultPath: string): Promise<void> {
+	const fullContent = fs.readFileSync(notePath, 'utf-8');
+	const lines = fullContent.split('\n');
+	
+	if (lineIndex < 0 || lineIndex >= lines.length) {
+		throw new Error('Invalid line index');
+	}
+	
+	const line = lines[lineIndex];
+	if (!line) {
+		throw new Error('Line not found');
+	}
+	
+	// Toggle the checkbox
+	if (line.includes('[ ]')) {
+		lines[lineIndex] = line.replace('[ ]', '[x]');
+	} else if (line.match(/\[x\]/i)) {
+		lines[lineIndex] = line.replace(/\[x\]/i, '[ ]');
+	} else {
+		throw new Error('Line is not a TODO item');
+	}
+	
+	const newContent = lines.join('\n');
+	await updateNote(notePath, newContent, vaultPath);
+}

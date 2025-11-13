@@ -5,10 +5,11 @@ import SelectInput from 'ink-select-input';
 import MultiSelect from './multi-select.js';
 import TextInput from 'ink-text-input';
 import TerminalEditor from './terminal-editor.js';
+import fs from 'node:fs';
 
 import {useTheme} from '../hooks/use-theme.js';
 import {renderMarkdown} from '../lib/markdown.js';
-import {resolveVaultPath, ensureVaultStructure, readAllNotes, createNote, deleteNote, type Note} from '../core/index.js';
+import {resolveVaultPath, ensureVaultStructure, readAllNotes, createNote, deleteNote, extractTodos, toggleTodo, type Note} from '../core/index.js';
 
 
 export default memo(function Editor() {
@@ -21,6 +22,7 @@ export default memo(function Editor() {
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
 	const [currentNoteContent, setCurrentNoteContent] = useState('');
+	const [todos, setTodos] = useState<Array<{text: string; checked: boolean; index: number}>>([]);
 	const [isCreatingNote, setIsCreatingNote] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -45,12 +47,20 @@ export default memo(function Editor() {
 		})();
 	}, [vaultPath]);
 	
-	// Update preview when selected note changes
+	// Update preview and todos when selected note changes
 	useEffect(() => {
 		if (notes.length > 0 && selectedNoteIndex < notes.length) {
 			const note = notes[selectedNoteIndex];
 			if (note) {
 				setCurrentNoteContent(note.body);
+				// Extract todos from the full note content
+				try {
+					const fullContent = fs.readFileSync(note.path, 'utf-8');
+					const extractedTodos = extractTodos(fullContent);
+					setTodos(extractedTodos);
+				} catch (error) {
+					setTodos([]);
+				}
 			}
 		}
 	}, [selectedNoteIndex, notes]);
@@ -75,7 +85,20 @@ export default memo(function Editor() {
 		}
 	};
 
-	const handleSubmit = (_: any) => {};
+	const handleSubmit = async (items: Array<{label: string; value: string}>) => {
+		if (notes.length === 0 || !notes[selectedNoteIndex]) return;
+		
+		try {
+			for (const item of items) {
+				const lineIndex = parseInt(item.value, 10);
+				await toggleTodo(notes[selectedNoteIndex].path, lineIndex, vaultPath);
+			}
+			await refreshNotes();
+			setMessage(`Toggled ${items.length} todo(s)`);
+		} catch (error) {
+			setMessage(`Error toggling todos: ${error}`);
+		}
+	};
 
 	const handleCreateNoteSubmit = async () => {
 		try {
@@ -112,6 +135,20 @@ export default memo(function Editor() {
 	};
 
 	useInput((input, key) => {
+		// HIGHEST PRIORITY: Handle pane switching FIRST before anything else
+		if (input === '1') {
+			setActivePane('notes');
+			return;
+		}
+		if (input === '2') {
+			setActivePane('preview');
+			return;
+		}
+		if (input === '3') {
+			setActivePane('todos');
+			return;
+		}
+		
 		if (isCreatingNote || isEditing) {
 			return; // Don't process other inputs while creating note or editing
 		}
@@ -140,19 +177,6 @@ export default memo(function Editor() {
 				return;
 			}
 		}
-		
-		if (input === '1') {
-			setActivePane('notes');
-			return;
-		}
-		if (input === '2') {
-			setActivePane('preview');
-			return;
-		}
-		if (input === '3') {
-			setActivePane('todos');
-			return;
-		}
 		if (input === 'n') {
 			setIsCreatingNote(true);
 			return;
@@ -169,7 +193,7 @@ export default memo(function Editor() {
 			}
 			return;
 		}
-	});
+	}, {isActive: true});
 
 	return (
 		<>
@@ -185,16 +209,35 @@ export default memo(function Editor() {
 					}
 					paddingX={1}
 				>
-					<SelectInput
-						key={selectedNoteIndex}
-						items={notes.map(note => ({
-							label: note.meta.title || note.path.split('/').pop() || 'Untitled',
-							value: note.path,
-						}))}
-						onSelect={handleSelect}
-						isFocused={activePane === 'notes'}
-						initialIndex={selectedNoteIndex}
-					/>
+					{notes.length === 0 ? (
+						<Box paddingX={1}>
+							<Text color="gray">No notes yet. Press 'n' to create one.</Text>
+						</Box>
+					) : activePane === 'notes' && !isCreatingNote && !isEditing && !showDeleteConfirm ? (
+						<SelectInput
+							key={`select-${selectedNoteIndex}`}
+							items={notes.map(note => ({
+								label: note.meta.title || note.path.split('/').pop() || 'Untitled',
+								value: note.path,
+							}))}
+							onSelect={handleSelect}
+							isFocused={true}
+							initialIndex={selectedNoteIndex}
+						/>
+					) : (
+						<Box flexDirection="column">
+							{notes.map((note, idx) => (
+								<Text
+									key={note.path}
+									color={idx === selectedNoteIndex ? 'cyan' : undefined}
+									dimColor={idx !== selectedNoteIndex}
+								>
+									{idx === selectedNoteIndex ? '› ' : '  '}
+									{note.meta.title || note.path.split('/').pop() || 'Untitled'}
+								</Text>
+							))}
+						</Box>
+					)}
 				</TitledBox>
 				<TitledBox
 					titles={[`2: 👀 Preview ${notes[selectedNoteIndex]?.meta.title || ''}`]}
@@ -212,18 +255,27 @@ export default memo(function Editor() {
 				</TitledBox>
 			</Box>
 			<TitledBox
-				titles={[`3: 📝 TODOs (0)`]}
+				titles={[`3: 📝 TODOs (${todos.length})`]}
 				titleStyles={titleStyles['rounded']}
 				flexGrow={1}
 				flexDirection="column"
 				borderStyle="round"
 				borderColor={activePane === 'todos' ? colors.primary : colors.secondary}
 			>
-				<MultiSelect
-					items={[]}
-					onSubmit={handleSubmit}
-					isFocused={activePane === 'todos'}
-				/>
+				{todos.length > 0 ? (
+					<MultiSelect
+						items={todos.map(todo => ({
+							label: todo.text,
+							value: todo.index.toString(),
+						}))}
+						onSubmit={handleSubmit}
+						isFocused={activePane === 'todos'}
+					/>
+				) : (
+					<Box paddingX={1}>
+						<Text color="gray">No TODOs in this note</Text>
+					</Box>
+				)}
 			</TitledBox>
 			<Box
 				flexGrow={1}
@@ -234,8 +286,8 @@ export default memo(function Editor() {
 			>
 				<Text>
 					{activePane === 'notes' && '1: '}
-					n:new-note e:edit /:search d:delete arrows:navigate
-					space:toggle-first-task
+					n:new-note e:edit d:delete arrows:navigate
+					{activePane === 'todos' && ' space:toggle-selected'}
 				</Text>
 				{message && <Text color="yellow">{message}</Text>}
 			</Box>
