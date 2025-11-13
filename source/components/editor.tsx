@@ -1,98 +1,116 @@
 import {Box, Text, useInput} from 'ink';
 import {TitledBox, titleStyles} from '@mishieck/ink-titled-box';
-import {memo, useState} from 'react';
+import {memo, useState, useEffect} from 'react';
 import SelectInput from 'ink-select-input';
 import MultiSelect from './multi-select.js';
 import TextInput from 'ink-text-input';
+import TerminalEditor from './terminal-editor.js';
 
 import {useTheme} from '../hooks/use-theme.js';
 import {renderMarkdown} from '../lib/markdown.js';
+import {resolveVaultPath, ensureVaultStructure, readAllNotes, createNote, deleteNote, type Note} from '../core/index.js';
 
-const items = [
-	{
-		label: '2025-11-06-1',
-		value: '2025-11-06-1',
-	},
-	{
-		label: '2025-11-06-2',
-		value: '2025-11-06-2',
-	},
-	{
-		label: '2025-11-06-3',
-		value: '2025-11-06-3',
-	},
-];
-
-const todos = [
-	{
-		label: 'First',
-		value: 'first',
-	},
-	{
-		label: 'Second',
-		value: 'second',
-	},
-	{
-		label: 'Third',
-		value: 'third',
-	},
-];
-
-const markdownContent = `
-# Hello World
-Description of the note
-
-\`\`\`ts
-const x = 1;
-\`\`\`
-
-## Lists
-
-- First
-- Second
-- Third
-
-## Links
-
-- [Google](https://google.com)
-- [GitHub](https://github.com)
-
-## TODOs
-
-- [x] First
-- [ ] Second
-- [ ] Third
-`;
 
 export default memo(function Editor() {
 	const {colors} = useTheme();
+	const vaultPath = resolveVaultPath();
+	
 	const [activePane, setActivePane] = useState<'notes' | 'preview' | 'todos'>(
 		'notes',
 	);
-	const [selectedNote, setSelectedNote] = useState<{
-		label: string;
-		value: string;
-	} | null>();
+	const [notes, setNotes] = useState<Note[]>([]);
+	const [selectedNoteIndex, setSelectedNoteIndex] = useState(0);
+	const [currentNoteContent, setCurrentNoteContent] = useState('');
 	const [isCreatingNote, setIsCreatingNote] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
 	const [noteTitle, setNoteTitle] = useState(
 		new Date().toISOString().split('T')[0] || '',
 	);
+	const [message, setMessage] = useState('');
+	
+	// Load notes on mount
+	useEffect(() => {
+		(async () => {
+			try {
+				await ensureVaultStructure(vaultPath);
+				const allNotes = await readAllNotes(vaultPath);
+				setNotes(allNotes);
+				if (allNotes.length > 0 && allNotes[0]) {
+					setCurrentNoteContent(allNotes[0].body);
+				}
+			} catch (error) {
+				setMessage(`Error loading vault: ${error}`);
+			}
+		})();
+	}, [vaultPath]);
+	
+	// Update preview when selected note changes
+	useEffect(() => {
+		if (notes.length > 0 && selectedNoteIndex < notes.length) {
+			const note = notes[selectedNoteIndex];
+			if (note) {
+				setCurrentNoteContent(note.body);
+			}
+		}
+	}, [selectedNoteIndex, notes]);
 
 	function handleSelect(item: {label: string; value: string}) {
-		setSelectedNote(item);
+		const index = notes.findIndex(n => n.path === item.value);
+		if (index >= 0) {
+			setSelectedNoteIndex(index);
+		}
 	}
+	
+	const refreshNotes = async () => {
+		try {
+			const allNotes = await readAllNotes(vaultPath);
+			setNotes(allNotes);
+			if (allNotes.length > 0 && allNotes[0]) {
+				setSelectedNoteIndex(0);
+				setCurrentNoteContent(allNotes[0].body);
+			}
+		} catch (error) {
+			setMessage(`Error refreshing notes: ${error}`);
+		}
+	};
 
 	const handleSubmit = (_: any) => {};
 
-	const handleCreateNoteSubmit = () => {
-		// TODO: implement note creation
-		setIsCreatingNote(false);
-		setNoteTitle(new Date().toISOString().split('T')[0] || '');
+	const handleCreateNoteSubmit = async () => {
+		try {
+			await createNote(vaultPath, noteTitle);
+			await refreshNotes();
+			setMessage('Note created successfully');
+			setIsCreatingNote(false);
+			setNoteTitle(new Date().toISOString().split('T')[0] || '');
+		} catch (error) {
+			setMessage(`Error creating note: ${error}`);
+		}
+	};
+	
+	const handleDeleteNote = async () => {
+		if (notes.length === 0) return;
+		const noteToDelete = notes[selectedNoteIndex];
+		if (!noteToDelete) return;
+		
+		try {
+			await deleteNote(noteToDelete.path, vaultPath);
+			await refreshNotes();
+			setMessage('Note deleted');
+		} catch (error) {
+			setMessage(`Error deleting note: ${error}`);
+		}
+	};
+	
+	const handleEditClose = async () => {
+		setIsEditing(false);
+		await refreshNotes();
+		setMessage('Note saved');
 	};
 
 	useInput(input => {
-		if (isCreatingNote) {
-			return; // Don't process other inputs while creating note
+		if (isCreatingNote || isEditing) {
+			return; // Don't process other inputs while creating note or editing
 		}
 		if (input === '1') {
 			setActivePane('notes');
@@ -110,14 +128,23 @@ export default memo(function Editor() {
 			setIsCreatingNote(true);
 			return;
 		}
-		2;
+		if (input === 'd') {
+			handleDeleteNote();
+			return;
+		}
+		if (input === 'e') {
+			if (notes.length > 0) {
+				setIsEditing(true);
+			}
+			return;
+		}
 	});
 
 	return (
 		<>
 			<Box>
 				<TitledBox
-					titles={[`1: 🗒️ Notes (0)`]}
+					titles={[`1: 🗒️ Notes (${notes.length})`]}
 					titleStyles={titleStyles['rounded']}
 					width={32}
 					flexDirection="column"
@@ -128,13 +155,16 @@ export default memo(function Editor() {
 					paddingX={1}
 				>
 					<SelectInput
-						items={items}
+						items={notes.map(note => ({
+							label: note.meta.title || note.path.split('/').pop() || 'Untitled',
+							value: note.path,
+						}))}
 						onSelect={handleSelect}
 						isFocused={activePane === 'notes'}
 					/>
 				</TitledBox>
 				<TitledBox
-					titles={[`2: 👀 Preview ${selectedNote?.label ?? ''}`]}
+					titles={[`2: 👀 Preview ${notes[selectedNoteIndex]?.meta.title || ''}`]}
 					titleStyles={titleStyles['rounded']}
 					flexGrow={1}
 					flexDirection="column"
@@ -145,7 +175,7 @@ export default memo(function Editor() {
 					paddingX={1}
 					marginLeft={1}
 				>
-					<Text>{renderMarkdown(markdownContent)}</Text>
+					<Text>{currentNoteContent ? renderMarkdown(currentNoteContent) : 'No note selected'}</Text>
 				</TitledBox>
 			</Box>
 			<TitledBox
@@ -157,7 +187,7 @@ export default memo(function Editor() {
 				borderColor={activePane === 'todos' ? colors.primary : colors.secondary}
 			>
 				<MultiSelect
-					items={todos}
+					items={[]}
 					onSubmit={handleSubmit}
 					isFocused={activePane === 'todos'}
 				/>
@@ -174,7 +204,14 @@ export default memo(function Editor() {
 					n:new-note e:edit /:search d:delete arrows:navigate
 					space:toggle-first-task
 				</Text>
+				{message && <Text color="yellow">{message}</Text>}
 			</Box>
+			{isEditing && notes.length > 0 && notes[selectedNoteIndex] && (
+				<TerminalEditor
+					filePath={notes[selectedNoteIndex].path}
+					onClose={handleEditClose}
+				/>
+			)}
 			{isCreatingNote && (
 				<TitledBox
 					titles={[` 🆕 New Note`]}

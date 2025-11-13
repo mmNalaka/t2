@@ -1,0 +1,191 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type {Note, NoteMeta} from './note.js';
+import {commitAll, initRepo} from './git.js';
+
+/**
+ * Ensures the vault directory structure exists
+ */
+export async function ensureVaultStructure(vaultPath: string): Promise<void> {
+	const notesDir = path.join(vaultPath, 'notes');
+	
+	if (!fs.existsSync(vaultPath)) {
+		fs.mkdirSync(vaultPath, {recursive: true});
+	}
+	
+	if (!fs.existsSync(notesDir)) {
+		fs.mkdirSync(notesDir, {recursive: true});
+	}
+	
+	// Initialize git if not already done
+	initRepo(vaultPath);
+}
+
+/**
+ * Reads a single note from the vault
+ */
+export async function readNote(notePath: string): Promise<Note> {
+	const content = fs.readFileSync(notePath, 'utf-8');
+	const meta: NoteMeta = {};
+	let body = content;
+	
+	// Parse YAML frontmatter
+	if (content.startsWith('---')) {
+		const endOfFrontmatter = content.indexOf('\n---', 3);
+		if (endOfFrontmatter !== -1) {
+			const frontmatter = content.substring(3, endOfFrontmatter);
+			body = content.substring(endOfFrontmatter + 4).trim();
+			
+			for (const line of frontmatter.split('\n')) {
+				const colonIndex = line.indexOf(':');
+				if (colonIndex > 0) {
+					const key = line.substring(0, colonIndex).trim();
+					const value = line.substring(colonIndex + 1).trim();
+					if (key && value) {
+						meta[key] = value.replace(/^['"]|['"]$/g, '');
+					}
+				}
+			}
+		}
+	}
+	
+	// Extract tags and links
+	const tags = [...body.matchAll(/#([a-zA-Z0-9_-]+)/g)]
+		.map(match => match[1])
+		.filter((tag): tag is string => tag !== undefined);
+	const links = [...body.matchAll(/\[([^\]]+)\]\([^\)]+\)/g)]
+		.map(match => match[1])
+		.filter((link): link is string => link !== undefined);
+	
+	return {
+		path: notePath,
+		meta,
+		body,
+		tags,
+		links,
+	};
+}
+
+/**
+ * Creates a new note in the vault
+ */
+export async function createNote(vaultPath: string, title?: string): Promise<string> {
+	const notesDir = path.join(vaultPath, 'notes');
+	
+	// Get today's date in YYYY-MM-DD format
+	const today = new Date().toISOString().split('T')[0] || '';
+	
+	// Check for existing notes with today's date
+	let fileName = `${today}.md`;
+	
+	if (fs.existsSync(notesDir)) {
+		const files = fs.readdirSync(notesDir);
+		const todayNotes = files.filter(f => f.startsWith(today));
+		if (todayNotes.length > 0) {
+			const noteNumber = todayNotes.length + 1;
+			fileName = `${today}-${noteNumber}.md`;
+		}
+	}
+	
+	const notePath = path.join(notesDir, fileName);
+	const displayTitle = title || today;
+	
+	const content = `---
+title: ${displayTitle}
+created: ${new Date().toISOString()}
+---
+
+# ${displayTitle}
+
+Your content here...
+`;
+	
+	fs.writeFileSync(notePath, content, 'utf-8');
+	
+	// Auto-commit
+	commitAll(vaultPath, `feat(note): create ${fileName}`);
+	
+	return notePath;
+}
+
+/**
+ * Reads all notes from the vault
+ */
+export async function readAllNotes(vaultPath: string): Promise<Note[]> {
+	const notesDir = path.join(vaultPath, 'notes');
+	if (!fs.existsSync(notesDir)) {
+		return [];
+	}
+	
+	const files = fs.readdirSync(notesDir);
+	const notes: Note[] = [];
+	
+	for (const file of files) {
+		if (file.endsWith('.md')) {
+			const notePath = path.join(notesDir, file);
+			try {
+				const note = await readNote(notePath);
+				notes.push(note);
+			} catch (error) {
+				console.error(`Failed to read note ${file}:`, error);
+			}
+		}
+	}
+	
+	// Sort by pinned status (pinned first), then by name
+	return notes.sort((a, b) => {
+		if (a.meta.pinnedAt && !b.meta.pinnedAt) return -1;
+		if (!a.meta.pinnedAt && b.meta.pinnedAt) return 1;
+		return a.path.localeCompare(b.path);
+	});
+}
+
+/**
+ * Updates a note's content
+ */
+export async function updateNote(notePath: string, content: string, vaultPath: string): Promise<void> {
+	fs.writeFileSync(notePath, content, 'utf-8');
+	
+	// Auto-commit
+	const fileName = path.basename(notePath);
+	commitAll(vaultPath, `feat(note): update ${fileName}`);
+}
+
+/**
+ * Deletes a note from the vault
+ */
+export async function deleteNote(notePath: string, vaultPath: string): Promise<void> {
+	if (fs.existsSync(notePath)) {
+		fs.unlinkSync(notePath);
+		
+		// Auto-commit
+		const fileName = path.basename(notePath);
+		commitAll(vaultPath, `feat(note): delete ${fileName}`);
+	}
+}
+
+/**
+ * Pins or unpins a note
+ */
+export async function setPinned(notePath: string, pinned: boolean, vaultPath: string): Promise<void> {
+	const note = await readNote(notePath);
+	
+	if (pinned) {
+		note.meta.pinnedAt = new Date().toISOString();
+	} else {
+		delete note.meta.pinnedAt;
+	}
+	
+	// Rebuild content with updated frontmatter
+	const frontmatterLines = Object.entries(note.meta)
+		.map(([key, value]) => `${key}: ${value}`);
+	
+	const content = `---
+${frontmatterLines.join('\n')}
+---
+
+${note.body}
+`;
+	
+	await updateNote(notePath, content, vaultPath);
+}
