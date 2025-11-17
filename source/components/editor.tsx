@@ -16,7 +16,7 @@ import {
 	createNote,
 	deleteNote,
 	extractTodos,
-	toggleTodo,
+	updateNote,
 	type Note,
 } from "../core/index.js";
 
@@ -101,15 +101,50 @@ export default memo(function Editor() {
 		if (notes.length === 0 || !notes[selectedNoteIndex]) return;
 
 		try {
-			for (const item of items) {
-				const lineIndex = parseInt(item.value, 10);
-				await toggleTodo(notes[selectedNoteIndex].path, lineIndex, vaultPath);
+			const note = notes[selectedNoteIndex];
+			const fullContent = fs.readFileSync(note.path, "utf-8");
+			const lines = fullContent.split("\n");
+
+			// Selected line indexes from MultiSelect (these should become checked)
+			const selectedIndexes = new Set(
+				items.map((item) => parseInt(item.value, 10)),
+			);
+
+			for (const todo of todos) {
+				const lineIndex = todo.index;
+				if (lineIndex < 0 || lineIndex >= lines.length) continue;
+				const line = lines[lineIndex];
+				if (!line) continue;
+
+				// For lines that are todo items, enforce checked/unchecked
+				if (selectedIndexes.has(lineIndex)) {
+					// ensure checked
+					if (line.includes("[ ]")) {
+						lines[lineIndex] = line.replace("[ ]", "[x]");
+					} else if (line.match(/\[x\]/i)) {
+						// already checked, leave as-is
+					} else {
+						// not a todo line, skip
+					}
+				} else {
+					// ensure unchecked
+					if (line.match(/\[x\]/i)) {
+						lines[lineIndex] = line.replace(/\[x\]/i, "[ ]");
+					} else if (line.includes("[ ]")) {
+						// already unchecked, leave as-is
+					} else {
+						// not a todo line, skip
+					}
+				}
 			}
+
+			const newContent = lines.join("\n");
+			await updateNote(note.path, newContent, vaultPath);
 			await refreshNotes();
-			setMessage(`Toggled ${items.length} todo(s)`);
+			setMessage(`Updated ${items.length} todo(s)`);
 			clearMessage();
 		} catch (error) {
-			setMessage(`Error toggling todos: ${error}`);
+			setMessage(`Error updating todos: ${error}`);
 			clearMessage();
 		}
 	};
@@ -294,6 +329,9 @@ export default memo(function Editor() {
 							label: todo.text,
 							value: todo.index.toString(),
 						}))}
+						initialSelectedValues={todos
+							.filter((todo) => todo.checked)
+							.map((todo) => todo.index.toString())}
 						onSubmit={handleSubmit}
 						isFocused={activePane === "todos"}
 					/>
