@@ -87,7 +87,6 @@ export default memo(function Editor() {
 			const allNotes = await readAllNotes(vaultPath);
 			setNotes(allNotes);
 			if (allNotes.length > 0 && allNotes[0]) {
-				setSelectedNoteIndex(0);
 				setCurrentNoteContent(allNotes[0].body);
 			}
 		} catch (error) {
