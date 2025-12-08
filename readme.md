@@ -18,7 +18,7 @@ A beautiful terminal-based note-taking app with git-backed storage, similar to [
 ## 🚀 Install
 
 ```bash
-npm install --global t2
+npm install --global t2-notes
 ```
 
 ## 📖 Usage
@@ -26,7 +26,7 @@ npm install --global t2
 ### Starting the App
 
 ```bash
-t2
+t2-notes
 ```
 
 The app will automatically create a vault at `~/.notes` and initialize it as a git repository.
@@ -36,9 +36,7 @@ The app will automatically create a vault at `~/.notes` and initialize it as a g
 You can configure the application directly from the terminal using the configuration interface.
 
 ```bash
-t2 --config
-# or
-t2 -c
+t2-notes --config
 ```
 
 This will open the configuration menu where you can:

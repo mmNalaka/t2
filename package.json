@@ -1,7 +1,21 @@
 {
-	"name": "t2",
-	"version": "0.0.0",
+	"name": "t2-notes",
+	"version": "1.0.1",
+	"description": "A beautiful terminal-based note-taking app with git-backed storage",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mmNalaka/t2.git"
+	},
+	"author": "Nalaka <https://github.com/mmNalaka>",
+	"keywords": [
+		"terminal",
+		"notes",
+		"git",
+		"cli",
+		"react",
+		"ink"
+	],
 	"bin": "dist/cli.js",
 	"type": "module",
 	"engines": {
@@ -10,7 +24,8 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsc --watch",
-		"test": "prettier --check . && xo && ava"
+		"test": "prettier --check . && xo && ava",
+		"prepublishOnly": "npm run build"
 	},
 	"files": [
 		"dist"
