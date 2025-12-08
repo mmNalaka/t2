@@ -6,6 +6,7 @@ A beautiful terminal-based note-taking app with git-backed storage, similar to [
 
 - 📝 **Markdown notes** with live preview
 - 🎨 **Beautiful terminal UI** with multiple themes
+- ⚙️ **Configurable** via CLI or config file
 - 📂 **Local vault storage** with automatic organization
 - 🔄 **Git-backed** with auto-commits on every change
 - 🌐 **Remote sync** support (push/pull to GitHub, GitLab, etc.)
@@ -30,9 +31,36 @@ t2
 
 The app will automatically create a vault at `~/.notes` and initialize it as a git repository.
 
-### Custom Vault Location
+### Configuration
 
-Set the vault path using environment variables:
+You can configure the application directly from the terminal using the configuration interface.
+
+```bash
+t2 --config
+# or
+t2 -c
+```
+
+This will open the configuration menu where you can:
+- **Set Vault Path**: Choose where your notes are stored (defaults to `~/.notes`).
+- **Select Theme**: Choose from a variety of built-in themes.
+
+Configuration is saved to `~/.t2/config.json`.
+
+#### Manual Configuration
+
+You can also manually edit the configuration file at `~/.t2/config.json`:
+
+```json
+{
+  "theme": "tokyo-night",
+  "vaultPath": "/Users/username/my-notes"
+}
+```
+
+### Environment Variables
+
+You can override the vault path using environment variables (highest priority):
 
 ```bash
 export VAULT_PATH=/path/to/your/notes
@@ -97,7 +125,7 @@ The vault is automatically initialized as a git repository. You can sync it with
 2. Add the remote to your vault:
 
 ```bash
-cd ~/.notes
+cd ~/.notes # Or your custom vault path
 git remote add origin https://github.com/yourusername/notes.git
 git branch -M main
 git push -u origin main
@@ -206,14 +234,24 @@ console.log('Hello, world!');
 
 ## 🎨 Themes
 
-Current theme: `tokyo-night`
+The app comes with several built-in themes including:
+- `tokyo-night` (default)
+- `synthwave-84`
+- `forest-night`
+- `material-ocean`
+- `sunset-glow`
+- `nord-frost`
+- `rose-pine-dawn`
+- `neon-jungle`
+- `midnight-amethyst`
+- `desert-mirage`
+- `cherry-blossom`
+- `electric-storm`
+- `deep-sea`
+- `volcanic-ash`
+- `cyberpunk-mint`
 
-To change themes, edit `/source/app.tsx`:
-
-```typescript
-colors: themes['cherry-blossom'].colors,
-// or 'synthwave-84', 'tokyo-night', etc.
-```
+Change themes using `t2 --config`.
 
 ## 🔧 Development
 
