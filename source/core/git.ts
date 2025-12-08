@@ -1,12 +1,12 @@
-import {execSync} from 'node:child_process';
-import path from 'node:path';
-import fs from 'node:fs';
+import { execSync } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
 
 /**
  * Checks if a directory is a git repository
  */
 export function isGitRepo(repoPath: string): boolean {
-	const gitDir = path.join(repoPath, '.git');
+	const gitDir = path.join(repoPath, ".git");
 	return fs.existsSync(gitDir);
 }
 
@@ -17,43 +17,43 @@ export function initRepo(repoPath: string): void {
 	if (isGitRepo(repoPath)) {
 		return;
 	}
-	
+
 	try {
-		execSync('git init', {
+		execSync("git init", {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
-		
+
 		execSync('git config user.name "Notes Vault"', {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
-		
+
 		execSync('git config user.email "vault@local"', {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
-		
+
 		// Create initial commit
-		const readmePath = path.join(repoPath, 'README.md');
+		const readmePath = path.join(repoPath, "README.md");
 		if (!fs.existsSync(readmePath)) {
 			fs.writeFileSync(
 				readmePath,
-				'# Notes Vault\n\nThis vault contains your notes managed by the terminal notes app.\n',
+				"# Notes Vault\n\nThis vault contains your notes managed by the terminal notes app.\n",
 			);
 		}
-		
-		execSync('git add README.md', {
+
+		execSync("git add README.md", {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
-		
+
 		execSync('git commit -m "chore: initialize vault"', {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
 	} catch (error) {
-		console.error('Failed to initialize git repo:', error);
+		console.error("Failed to initialize git repo:", error);
 		throw error;
 	}
 }
@@ -65,26 +65,26 @@ export function commitAll(repoPath: string, message: string): void {
 	if (!isGitRepo(repoPath)) {
 		initRepo(repoPath);
 	}
-	
+
 	try {
-		execSync('git add -A', {
+		execSync("git add -A", {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
-		
-		const status = execSync('git status --porcelain', {
+
+		const status = execSync("git status --porcelain", {
 			cwd: repoPath,
-			encoding: 'utf-8',
+			encoding: "utf-8",
 		});
-		
+
 		if (status.trim()) {
 			execSync(`git commit -m "${message}"`, {
 				cwd: repoPath,
-				stdio: 'pipe',
+				stdio: "pipe",
 			});
 		}
 	} catch (error) {
-		console.error('Failed to commit changes:', error);
+		console.error("Failed to commit changes:", error);
 	}
 }
 
@@ -93,16 +93,16 @@ export function commitAll(repoPath: string, message: string): void {
  */
 export function addRemote(repoPath: string, name: string, url: string): void {
 	if (!isGitRepo(repoPath)) {
-		throw new Error('Not a git repository');
+		throw new Error("Not a git repository");
 	}
-	
+
 	try {
 		execSync(`git remote add ${name} ${url}`, {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
 	} catch (error) {
-		console.error('Failed to add remote:', error);
+		console.error("Failed to add remote:", error);
 		throw error;
 	}
 }
@@ -110,18 +110,22 @@ export function addRemote(repoPath: string, name: string, url: string): void {
 /**
  * Pushes changes to remote
  */
-export function push(repoPath: string, remote = 'origin', branch = 'main'): void {
+export function push(
+	repoPath: string,
+	remote = "origin",
+	branch = "main",
+): void {
 	if (!isGitRepo(repoPath)) {
-		throw new Error('Not a git repository');
+		throw new Error("Not a git repository");
 	}
-	
+
 	try {
 		execSync(`git push ${remote} ${branch}`, {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
 	} catch (error) {
-		console.error('Failed to push:', error);
+		console.error("Failed to push:", error);
 		throw error;
 	}
 }
@@ -129,18 +133,22 @@ export function push(repoPath: string, remote = 'origin', branch = 'main'): void
 /**
  * Pulls changes from remote
  */
-export function pull(repoPath: string, remote = 'origin', branch = 'main'): void {
+export function pull(
+	repoPath: string,
+	remote = "origin",
+	branch = "main",
+): void {
 	if (!isGitRepo(repoPath)) {
-		throw new Error('Not a git repository');
+		throw new Error("Not a git repository");
 	}
-	
+
 	try {
 		execSync(`git pull ${remote} ${branch}`, {
 			cwd: repoPath,
-			stdio: 'pipe',
+			stdio: "pipe",
 		});
 	} catch (error) {
-		console.error('Failed to pull:', error);
+		console.error("Failed to pull:", error);
 		throw error;
 	}
 }
@@ -150,15 +158,15 @@ export function pull(repoPath: string, remote = 'origin', branch = 'main'): void
  */
 export function getStatus(repoPath: string): string {
 	if (!isGitRepo(repoPath)) {
-		return 'Not a git repository';
+		return "Not a git repository";
 	}
-	
+
 	try {
-		return execSync('git status --short', {
+		return execSync("git status --short", {
 			cwd: repoPath,
-			encoding: 'utf-8',
+			encoding: "utf-8",
 		});
 	} catch (error) {
-		return 'Error getting status';
+		return "Error getting status";
 	}
 }
