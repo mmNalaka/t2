@@ -1,6 +1,6 @@
 {
 	"name": "t2-notes",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "A beautiful terminal-based note-taking app with git-backed storage",
 	"license": "MIT",
 	"repository": {

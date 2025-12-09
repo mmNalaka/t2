@@ -62,14 +62,14 @@ You can override the vault path using environment variables (highest priority):
 
 ```bash
 export VAULT_PATH=/path/to/your/notes
-t2
+t2-notes
 ```
 
 Or:
 
 ```bash
 export NOTES_VAULT=/path/to/your/notes
-t2
+t2-notes
 ```
 
 ## ⌨️ Keyboard Shortcuts
